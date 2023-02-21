@@ -3,7 +3,7 @@ open the documentation via this link:
 
 https://docs.google.com/document/d/1MUWn_lzMKkZLdb-U0IrUpYRCmB-wr_yfPokJv0ps4Ns/edit?usp=sharing
 
-===================Quick copy of documentation without images (not recommended)================
+=====================Quick copy of documentation without images (not recommended)================
 Create virtual environment in cmd
 
 You can make a virtual environment and set up dependancies like the python version and packages. Then you can share the whole thing by copying it. Before you start coding you need to activate the specific environment you want to work in.
