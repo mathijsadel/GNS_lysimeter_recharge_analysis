@@ -1,6 +1,6 @@
 import pandas as pd
 import glob
-import hydroeval as he
+import hydroeval as he                      #Installing hydroeval works only with pip for me.  In cmd cd to folder python.exe then--> pip install hydroeval
 import sys
 import numpy
 from statistics import mean
@@ -422,7 +422,7 @@ print('b109','best members across lysimeters','P___',MkgeP_permember,'ET___',Mkg
 MkgeP_perlocation = dfstatsP.groupby(level=['location']).mean().sort_values(by="kge",ascending=False)
 MkgeET_perlocation = dfstatsET.groupby(level=['location']).mean().sort_values(by="kge",ascending=False)
 MkgeR_perlocation = dfstatsR.groupby(level=['location']).mean().sort_values(by="kge",ascending=False)
-print('b110','best lysimeters:','P___',MkgeP_perlocation,'ET___',MkgeET_perlocation,'R___', MkgeR_perlocation)
+print('b110','best lysimeters:','P___',MkgeP_perlocation.to_string(),'ET___',MkgeET_perlocation.to_string(),'R___', MkgeR_perlocation.to_string())
 
 
 
@@ -430,10 +430,12 @@ print('b110','best lysimeters:','P___',MkgeP_perlocation,'ET___',MkgeET_perlocat
 dfstatsP['KGElt04?'] = np.where(dfstatsP['kge']>=0.4,1,0); count04P = dfstatsP.groupby(level=['member']).sum().sort_values(by="KGElt04?",ascending=False);
 dfstatsET['KGElt04?'] = np.where(dfstatsET['kge']>=0.4,1,0); count04ET = dfstatsET.groupby(level=['member']).sum().sort_values(by="KGElt04?",ascending=False);
 dfstatsR['KGElt04?'] = np.where(dfstatsR['kge']>=0.4,1,0); count04R = dfstatsR.groupby(level=['member']).sum().sort_values(by="KGElt04?",ascending=False);
+print('b209', count04P.to_string(), 'R:', count04R.to_string())
+
 #list members that had exceeded 0.4 kge more then twice
-Ptopcount_gt04=count04P['KGElt04?'].loc[count04P['KGElt04?']>=2].index.tolist()
-ETtopcount_gt04=count04ET['KGElt04?'].loc[count04ET['KGElt04?']>=2].index.tolist()
-Rtopcount_gt04=count04R['KGElt04?'].loc[count04R['KGElt04?']>=2].index.tolist()
+Ptopcount_gt04=count04P['KGElt04?'].loc[count04P['KGElt04?']>=3].index.tolist()
+ETtopcount_gt04=count04ET['KGElt04?'].loc[count04ET['KGElt04?']>=3].index.tolist()
+Rtopcount_gt04=count04R['KGElt04?'].loc[count04R['KGElt04?']>=3].index.tolist()
 
 print('b210 top counts exceeding 0.4 kge','P__',Ptopcount_gt04,'ET__',ETtopcount_gt04,'R__',Rtopcount_gt04)
 print('b213',dfstatsET, 'still all members are present')
