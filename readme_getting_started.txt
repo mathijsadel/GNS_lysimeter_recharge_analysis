@@ -22,7 +22,11 @@ out: double indexed dataframe with
 6 apply a similar loop to plot a bar graph with kge values. 
 7 Apply filtering. determine at each location which model recharge members score kge>0.4. 
 8 Count for each member how many times kge>0.4 is true across the locations. Only keep members that have a count of 3 or larger
+	(Note: the script "timeseries_Sisland_old.py" is a the same. Only, the filtering condition is different. Members are excluded the a cross-site average kge score of kge<0.4)
 9 redo steps 4 to 6 with the filtered ensemble set.
+
+
+
 
 
 ////Spatial analysis in GOOGLE EARTH ENGINE (GEE)///
@@ -38,7 +42,7 @@ link statitics script:
 
 Link APP:
 
-GEE link here
+https://hijisvanadel.users.earthengine.app/view/gnsrecharge1 
 
 The App was GEE-web app was integrated in an .exe file that can be run from your desktop. The App can be updated in the GEE code editor. The python based interface draws the web-app into the interface based its correspoding webadress.
 (can also be found in the APP editor in GEE)
