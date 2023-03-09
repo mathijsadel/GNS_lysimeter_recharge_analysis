@@ -35,9 +35,9 @@ columns = ['date','R']
 columnslys = ['date','P','R','ET']
 
 
-path = 'C:/Users/mathijs/Desktop/DATASETS/modeltimeseries/*'
+path = 'C:/Users/Mathijs/Desktop/DATASETS/modeltimeseries/*'
 all_files = glob.glob(path + "/*.csv")
-pathlys = 'C:/Users/mathijs/Desktop/DATASETS/lysimeterdata/*'
+pathlys = 'C:/Users/Mathijs/Desktop/DATASETS/lysimeterdata/*'
 all_fileslys = glob.glob(path +"/*.csv")
 
 print('b1',all_files)

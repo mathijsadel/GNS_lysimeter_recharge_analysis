@@ -43,6 +43,7 @@ print('b1',all_files)
 
 #nse = he.evaluator(he.nse, simulations, evaluations)
 
+
 #kge, r, alpha, beta = he.evaluator(he.kge, simulations, evaluations)
 
 
@@ -489,6 +490,7 @@ for (mET,mP,mR,mswd,lsite,lysd) in zip(all_files[0::4],all_files[1::4],all_files
 
     #lysidata
     lysR = lysd['R']; lysP = lysd['P']; lysET = lysd['ET'];
+
     Llys = len(lysd['R'])
     #getindex in model data of first lys date, get first day first month of aggregated month of lysimeter series, last en first dates are the same for R,ET,P cause same dataframe
     fdatelysd = lysd.first_valid_index().replace(day=1)
