@@ -1,3 +1,35 @@
+#######################################################################
+# The aim of this script it to do a model-lysimeter timeseries analyses, and analyse what input products of E,P,and R
+# perform well. The sets of 'well performing' recharge, percipitation and evapotranspiration (input) product ensembles are further used in google earth engine to make maps
+# with ensemble statistics.
+
+# This script contains the following steps:
+# For this the code contains the following steps:
+# 1. import packages
+# 2. import modelled and lysimeter field csv data.
+# 3. pre-fromating. (calculating montly aggregates, ..)
+# 4. looping paralell over each lysimeter site,
+# 	Withing loop
+# 	4a make correct date indexing
+# 	4b matching lengths of time series
+# 	4c match same indexing across model and lysimeter data (always put first day of the month as aggregate)
+# 	4d calculate statistics for P R and ET: ensemble mean, ensemble spread (minimum - maximum value present at each time step), kge (and coefficients), rmse
+# 	4e apply double indexing with first index lysimeter location, second index is ensemble member
+# out: double indexed dataframe with
+#
+# 5 loop through use double indexed dataframe to build time series plots
+# 6 apply a similar loop to plot a bar graph with kge values.
+# 7 Apply filtering. determine at each location which model recharge members score kge>0.4.
+# 8 Count for each member how many times kge>0.4 is true across the locations. Only keep members that have a count of 3 or larger
+# 	(Note: the script "timeseries_Sisland_old.py" is a the same. Only, the filtering condition is different. Members are excluded the a cross-site average kge score of kge<0.4)
+# 9 redo steps 4 to 6 with the filtered ensemble set.
+
+######################################################################################
+
+
+
+
+
 import pandas as pd
 import glob
 import hydroeval as he                      #Installing hydroeval works only with pip for me.  In cmd cd to folder python.exe then--> pip install hydroeval
@@ -15,19 +47,13 @@ import numpy as np
 from datetime import date
 from cycler import cycler
 import time
-print(mean([0.67,0.19,0.56,0.52,0.42]))
+
+
+#allow printing long arrays
 
 numpy.set_printoptions(threshold=sys.maxsize)
 
 
-simulations = [5.3, 4.2, 5.7, 2.3]
-evaluations = [4.7, 4.3, 5.5, 2.7]
-
-nse = he.evaluator(he.nse, simulations, evaluations)
-
-kge, r, alpha, beta = he.evaluator(he.kge, simulations, evaluations)
-
-import itertools
 
 
 
@@ -42,10 +68,6 @@ all_fileslys = glob.glob(path +"/*.csv")
 
 print('b1',all_files)
 
-#nse = he.evaluator(he.nse, simulations, evaluations)
-
-#kge, r, alpha, beta = he.evaluator(he.kge, simulations, evaluations)
-
 
 
 #LYSOMETER DATA IMPORTS
@@ -56,21 +78,13 @@ dfly_linc = pd.read_csv('C:/Users/mathijs/Desktop/DATASETS/lysimeterdata/3lincol
 dfly_winch = pd.read_csv('C:/Users/mathijs/Desktop/DATASETS/lysimeterdata/4winchmorelys.csv', header = None, names=columnslys, parse_dates=['date'],infer_datetime_format=True).set_index(['date'])
 lysdata = [dfly_airp,dfly_horo,dfly_linc,dfly_winch]
 
-
 print('b11',lysdata[0].to_string(),lysdata[1].to_string(),lysdata[2].to_string(),lysdata[3].to_string(), 'b111')
+print('b122',dfly_airp.resample("M").sum(),'b12',dfly_winch.to_string())
 
 
 
-
-
-
-
-
-
-
-
-# #preview characteristics of lysimeter data
-# #experiment with moving average sinosoidal ET_daily (from daily P-R), sinosoidal effect
+# #Extra preview characteristics of lysimeter data
+# #experiment with moving average sinosoidal ET_daily (from daily P-R), sinosoidal effect. Can you already see any relation between P and R
 # dfly_kaha.rolling(365).mean().plot(title='moving average 365 day window')
 # dfly_kaha.rolling(270).mean().plot(title='moving average 270 day window')
 # dfly_kaha.rolling(180).mean().plot(title='moving average 180 day window')
@@ -82,17 +96,18 @@ print('b11',lysdata[0].to_string(),lysdata[1].to_string(),lysdata[2].to_string()
 
 
 
-#dfly_airp,dfly_horo,dfly_linc,dfly_winch = [pd.read_csv(all_fileslys[0],header = None, names=columnslys)],[pd.read_csv(all_fileslys[1],header = None, names=columnslys)],[pd.read_csv(all_fileslys[2],header = None, names=columnslys)],[pd.read_csv(all_fileslys[3],header = None, names=columnslys)]   #output [dataframe] [dataframe] [dataframe] [dataframe]
 
-#dfly_airp[0]['date'] = pd.to_datetime(dfly_airp[0]['date'], format='%d/%m/%Y');
 
-print('b122',dfly_airp.resample("M").sum(),'b12',dfly_winch.to_string())
 
 
 #import lysimeter csv & aggregate to monthly
 for dfl in range(len(lysdata)):
     lysdata[dfl] = lysdata[dfl].resample("M").sum()
 
+
+
+
+#initiate some lists to use for looping
 columnsET, columnsP, columnsR, columnsswd, = ['date','PML','GLDAS','MOD16','lysimeter','ens mean','ens spread','ens rmse','RMSElys_mean'],['date','GPM','GPM3H','ERA5','VCSN','GLDAS','CHIRPS','lysimeter','ens mean','ens spread','ens rmse','RMSElys_mean'],['date','GPM_PML','GPM_GLDAS','GPM_MOD16','GPM3H_PML','GPM3H_GLDAS','GPM3H_MOD16','ERA5_PML','ERA5_GLDAS','ERA5_MOD16','VCSN_PML','VCSN_GLDAS','VCSN_MOD16','GLDAS_PML','GLDAS_GLDAS','GLDAS_MOD16','CHIRPS_PML','CHIRPS_GLDAS','CHIRPS_MOD16','lysimeter','ens mean','ens spread','RMSElys_mean'],['date','GPM_PML','GPM_GLDAS','GPM_MOD16','GPM3H_PML','GPM3H_GLDAS','GPM3H_MOD16','ERA5_PML','ERA5_GLDAS','ERA5_MOD16','VCSN_PML','VCSN_GLDAS','VCSN_MOD16','GLDAS_PML','GLDAS_GLDAS','GLDAS_MOD16','CHIRPS_PML','CHIRPS_GLDAS','CHIRPS_MOD16','lysimeter','ens mean','ens spread','RMSElys_mean']
 siteList = ['christ airport', 'hororata', 'lincoln', 'winchmore']
 print('monthly agregates lysimeter data:', lysdata[3].to_string(),'Lyssddaaaaattttaa')
@@ -111,7 +126,7 @@ lysdata[0]=lysdata[0].loc['1-1-2003':'1-1-2008']; lysdata[1]=lysdata[1].loc['1-1
 
 print(lysdata,'--> lysdata' )
 
-#initialize
+#initialize for looping
 dfmET_all=[]; dfmP_all=[]; dfmR_all=[]; df_mswd_all=[];
 
 lyRlist = []
@@ -121,6 +136,18 @@ lyETlist= []
 dfstatsET, dfstatsP, dfstatsR= [pd.DataFrame(columns=['location','member','kge', 'r', 'alpha', 'beta'])]*3
 
 print('links',all_files[1::4], siteList[0:5],lysdata)
+
+
+
+
+
+
+
+
+
+
+
+# paralelly loop over ET P and R model and lysimeter data and calculater model-lysimeter stats
 for (mET,mP,mR,mswd,lsite,lysd) in zip(all_files[0::4],all_files[1::4],all_files[2::4],all_files[3::4],siteList[0:5],lysdata):                           #for each lysimeter location... chirst, hororata, lincoln, winchmore
     dfmET, dfmP,dfmR,df_mswd = [pd.read_csv(mET,header = None, names=columnsET, parse_dates=['date'])],[pd.read_csv(mP,header = None, names=columnsP, parse_dates=['date'])],[pd.read_csv(mR,header = None, names=columnsR, parse_dates=['date'])],[pd.read_csv(mswd,header = None, names=columnsswd, parse_dates=['date'])]   #output [dataframe] [dataframe] [dataframe] [dataframe]
     print('misc3', dfmR)
@@ -145,7 +172,7 @@ for (mET,mP,mR,mswd,lsite,lysd) in zip(all_files[0::4],all_files[1::4],all_files
     lysd['R'].index = dfmET[0].index
     #print(lysd['R'].index)
 
-
+    #calculate ensemble means
     dfmET[0]['ens mean'], dfmP[0]['ens mean'], dfmR[0]['ens mean'], df_mswd[0]['ens mean'] = dfmET[0].mean(axis=1), dfmP[0].mean(axis=1),dfmR[0].mean(axis=1),df_mswd[0].mean(axis=1)  #ensemble mean per timestep                                                          #ensemble averages per time step
     dfmET[0]['ens spread'], dfmP[0]['ens spread'], dfmR[0]['ens spread'], df_mswd[0]['ens spread'] = dfmET[0].max(axis=1).subtract(dfmET[0].min(axis=1)), dfmP[0].max(axis=1).subtract(dfmP[0].min(axis=1)), dfmR[0].max(axis=1).subtract(dfmR[0].min(axis=1)),df_mswd[0].max(axis=1).subtract(df_mswd[0].min(axis=1))
 
@@ -222,70 +249,55 @@ for (mET,mP,mR,mswd,lsite,lysd) in zip(all_files[0::4],all_files[1::4],all_files
     lyETlist +=[lysd['ET']]
 
 
-print('wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww',dfmR[0])
-#print(lyRlist, 't he a waosme ness')
+
+#set double indexces location and member
 dfstatsET=dfstatsET.set_index(['location','member'])
 dfstatsP=dfstatsP.set_index(['location','member'])
 dfstatsR=dfstatsR.set_index(['location','member'])
 
 
 
-#print(dfstatsET.to_string(),dfstatsP.to_string(),dfstatsR.to_string(),)
-
-# ax = dfstatsET.unstack(level=0).plot(kind='line', subplots=True, rot=0, figsize=(9, 7), layout=(4,8))
-# plt.tight_layout()
-# print(dfstatsET.to_string())
-# print(dfstatsP.to_string())
-# print(dfstatsR.to_string())
-
-# print(dfmR_all)
-
-# active_count_filename = glob.glob('Active_Count_*.csv')[0]
-# df1 = pd.read_csv(active_count_filename)
-# print(dfstats,'dfstatsszzzzzzzzzzzzzz')
 
 
-#stats bar plots ET,P,R
 
 
-#print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',dfmP[(dfmP['date']>datetime.date(2008,1,1)) & (dfmP['date']<datetime.date(2008,3,1))])
-#plt=pd.DataFrame.plot(dfmET[0]['ens spread'])
-#plt.show()
-
-#print(columnsR[1:19])                                                                                                  #make dataframe with values
-
-# dfstats['kge'],dfstats['r'],dfstats['alpha'],dfstats['beta'] = kge, r, alpha, beta                                      #stats into df
-# dfstats = dfstats.set_index([columnsR[1:19]]).sort_values(by="kge",ascending=False)                                     #sort
 
 
-# custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
-#                  cycler(lw=[1, 2, 3, 4]))
-# fig, axs = plt.subplots(2, 2, constrained_layout=True,figsize=(13, 9))
-# print(fig,'lolookkkoo')
-#
-#
-# for irc,idf in zip([[0,0],[0,1],[1,0],[1,1]],[0,1,2,3]):      #row collums right?  axs [[axes axes][axes axes]],  [0,1] row column
-#         print(irc[0],irc[1],idf)
-#         axs[irc[0]][irc[1]].plot(dfmET_all[idf][['date']],dfmET_all[idf][['PML','GLDAS','MOD16']],label=['lijntje','j','fjj'])
-#         axs[irc[0]][irc[1]].set_title('subplot 1')
-#         axs[irc[0]][irc[1]].set_xlabel('lead time days')
-#         axs[irc[0]][irc[1]].set_ylabel('et mm/d')
-#         #axs[irc[0]][irc[1]].set_prop_cycle(['red', 'black', 'yellow'])
-#         axs[irc[0]][irc[1]].legend(loc='best')
-# fig.suptitle('Temporal analysis ET', fontsize=16)
-# plt.show()
-# print('lollolollllooll',dfmET_all[0].iloc[:,1:4])#a'])
-#
-# print(axs)
-#
-#
-#
-# #print(dfmET_all[0][['PML','GLDAS','MOD16']],'formatttt?')
-# #plt.figure(); a=dfmR_all[1][['GPM_PML','GPM_GLDAS','GPM_MOD16','GPM3H_PML','GPM3H_GLDAS','GPM3H_MOD16','ERA5_PML','ERA5_GLDAS','ERA5_MOD16','VCSN_PML','VCSN_GLDAS','VCSN_MOD16','GLDAS_PML','GLDAS_GLDAS']].plot(); plt.legend(loc='best');
-#
-# #plt.show()
-# #print(dfmET)
-#
+
+###makte kge tabels for in rapport
+#from multi-index to single indexes again
+kgetableET=dfstatsET['kge'].unstack(level=1).T.round(1)
+kgetableP = dfstatsP['kge'].unstack(level=1).T.round(1)
+kgetableR = dfstatsR['kge'].unstack(level=1).T.round(1)
+
+#calculate cross-site mean, and put column as most left column
+kgetableET['cross-site average'] = kgetableET.mean(axis=1).round(1); temp_cols=kgetableET.columns.tolist();new_cols=temp_cols[-1:] + temp_cols[:-1]; kgetableET=kgetableET[new_cols]
+kgetableP['cross-site average'] = kgetableP.mean(axis=1).round(1); temp_cols=kgetableP.columns.tolist();new_cols=temp_cols[-1:] + temp_cols[:-1]; kgetableP=kgetableP[new_cols]
+kgetableR['cross-site average'] = kgetableR.mean(axis=1).round(1); temp_cols=kgetableR.columns.tolist();new_cols=temp_cols[-1:] + temp_cols[:-1]; kgetableR=kgetableR[new_cols]
+
+kgetableET = kgetableET.sort_values(by='cross-site average', ascending=False)
+kgetableP = kgetableP.sort_values(by='cross-site average', ascending=False)
+kgetableR = kgetableR.sort_values(by='cross-site average', ascending=False)
+
+kgetableET.to_csv('C:/Users/Mathijs/Documents/Master Uni/internship/timeseries/_ETtabelSI.csv');
+kgetableP.to_csv('C:/Users/Mathijs/Documents/Master Uni/internship/timeseries/_PtabelSI.csv');
+kgetableR.to_csv('C:/Users/Mathijs/Documents/Master Uni/internship/timeseries/_RtabelSI.csv');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # #make, and redistribute colour palet for the ensemble members
 colors = [#[0, 82, 246, 255],
           #[0, 196, 196, 255],
@@ -299,25 +311,26 @@ colors = [#[0, 82, 246, 255],
         ]
 
 cmp = LinearSegmentedColormap.from_list('', np.array(colors) / 255, 256)
-
 print('b15.5',dfmR_all,'b15.55',dfmR_all[1].to_string(),dfmR_all[2].to_string())
 
+
+
+#####Plot time serries of unfiltered ensemble
 for dfs,strdf, cols,stats,lyR,lyP,lyET in zip([dfmET_all,dfmP_all,dfmR_all],['ET','P','R'],[columnsET, columnsP, columnsR],[dfstatsET,dfstatsP,dfstatsR],lyRlist,lyPlist,lyETlist):  #for each ET, P, R #lyRlist list containing 4 lists R at each site
 
+    # define main frame for subplots
     fig, axs = plt.subplots(2,2, sharex=True,figsize=(13, 9), sharey=True)
-    #print(axs)
     axs=axs.flatten()
     fig.suptitle('Temporal analysis {0}'.format(strdf), fontsize=16)
 
-    #for colr, mem in zip()
-    clmlist=list(dfs[0])[1:-5]
-    #print(clmlist,len(cols),'heremate')
+
+    clmlist=list(dfs[0])[1:-5]        #making a list of the columns, being the names of the input ensemble members
     colrlist = (cmp(np.linspace(0, 1, len(clmlist))) * 255).astype(np.uint8)                                                                                                   #zip loops over shortest so define enough colors
     colrlist = [to_hex(cmp(v)) for v in np.linspace(0, 1, len(clmlist))]
 
     for loca in range(4):                                                                                                                                                       #for each location
         print('b16',axs[loca])
-        for cm, cr in zip(clmlist,colrlist):                                                                                                                                    #for each line
+        for cm, cr in zip(clmlist,colrlist):           #loop parallel over list of stings with ensemble member names, and, al list with colours                                                                                                                               #for each line
 
             print(dfs[loca][['date']],'b17')
             #print(cm)
@@ -340,7 +353,7 @@ for dfs,strdf, cols,stats,lyR,lyP,lyET in zip([dfmET_all,dfmP_all,dfmR_all],['ET
 
 
 
-#plot again, text with stats kge, membermean rmse,mena spread mean
+#again plot unfiltered time series, but now with the kge value of each individual member in text, also: membermean rmse,mean spread mean
 for dfs,strdf, cols,stats in zip([dfmET_all,dfmP_all,dfmR_all],['ET','P','R'],[columnsET, columnsP, columnsR],[dfstatsET,dfstatsP,dfstatsR]):
 
     fig, axs = plt.subplots(2,2, sharex=True,figsize=(17, 9), sharey=True)
@@ -375,6 +388,8 @@ for dfs,strdf, cols,stats in zip([dfmET_all,dfmP_all,dfmR_all],['ET','P','R'],[c
             axs[loca].text(0.05, 0.95, boxstring, transform=axs[loca].transAxes, fontsize=10,
                     verticalalignment='top', bbox=props);
             #print('loll')
+    plt.savefig("C:/Users/Mathijs/Documents/Master Uni/internship/timeseries/SItimeseries_prefiltering{y}.png".format(y=strdf))
+
 
 
 
@@ -393,7 +408,7 @@ for df,strdf in zip([dfstatsET,dfstatsP,dfstatsR],['ET','P','R']):
     df[df.columns[0:4]].loc['winchmore'].plot(ax=axbar[3], kind='bar',legend=1);axbar[3].legend(loc='upper center', bbox_to_anchor=(0.5, 1.0),
           ncol=4, fancybox=True, shadow=True); axbar[3].title.set_text('Winchmore')
     figbar.subplots_adjust(bottom=0.25)
-
+    figbar.savefig("C:/Users/Mathijs/Documents/Master Uni/internship/timeseries/SItimebar{y}.png".format(y=strdf))
 
 
 
@@ -427,7 +442,7 @@ dfstatsET['KGElt04?'] = np.where(dfstatsET['kge']>=0.4,1,0); count04ET = dfstats
 dfstatsR['KGElt04?'] = np.where(dfstatsR['kge']>=0.4,1,0); count04R = dfstatsR.groupby(level=['member']).sum().sort_values(by="KGElt04?",ascending=False);
 print('b209', count04P.to_string(), 'R:', count04R.to_string())
 
-#list members that had exceeded 0.4 kge more then twice
+#list members that had exceeded 0.4 kge more than THREE TIMES ACROSS ALL SITES
 Ptopcount_gt04=count04P['KGElt04?'].loc[count04P['KGElt04?']>=3].index.tolist()
 ETtopcount_gt04=count04ET['KGElt04?'].loc[count04ET['KGElt04?']>=3].index.tolist()
 Rtopcount_gt04=count04R['KGElt04?'].loc[count04R['KGElt04?']>=3].index.tolist()
@@ -440,12 +455,21 @@ print('b213',dfstatsET, 'still all members are present')
 
 
 
+
+
+
+
+
+
+
+
+
 ###################filtered plots kge >0.4 ##############################
 #########################################################################
 #########################################################################
 #########################################################################
 
-#copy past of for loop to recalculate spread and rmse filtered:
+#copy previous block of code that imports data, caluculate stats, and plots series... only now only include the 'wel performing once'.
 
 #columnsET, columnsP, columnsR, columnsswd, = ['date','PML','GLDAS','MOD16','lysimeter','ens mean','ens spread','ens rmse','RMSElys_mean'],['date','GPM','GPM3H','ERA5','VCSN','GLDAS','CHIRPS','lysimeter','ens mean','ens spread','ens rmse','RMSElys_mean'],['date','GPM_PML','GPM_GLDAS','GPM_MOD16','GPM3H_PML','GPM3H_GLDAS','GPM3H_MOD16','ERA5_PML','ERA5_GLDAS','ERA5_MOD16','VCSN_PML','VCSN_GLDAS','VCSN_MOD16','GLDAS_PML','GLDAS_GLDAS','GLDAS_MOD16','CHIRPS_PML','CHIRPS_GLDAS','CHIRPS_MOD16','lysimeter','ens mean','ens spread','RMSElys_mean'],['date','GPM_PML','GPM_GLDAS','GPM_MOD16','GPM3H_PML','GPM3H_GLDAS','GPM3H_MOD16','ERA5_PML','ERA5_GLDAS','ERA5_MOD16','VCSN_PML','VCSN_GLDAS','VCSN_MOD16','GLDAS_PML','GLDAS_GLDAS','GLDAS_MOD16','CHIRPS_PML','CHIRPS_GLDAS','CHIRPS_MOD16','lysimeter','ens mean','ens spread','RMSElys_mean']
 #updated for this north island analysis (I left the list above with all the members just for comparison), this list is later used for plotting and so defined outside the for loop that calculates the stats
@@ -465,6 +489,16 @@ print('links',all_files[0::4], 'take every fourth link from list starting at 0')
 print('b4001','lysdata has right lenghts and includes all !5! series:',lysdata)
 
 
+
+
+
+
+
+
+
+
+##IMPORT DATA AND CALCULATE STATS ONLY FOR 'WELL PERFORMING' MEMBERS.
+#FOR (P,ET,R) AMD ALL SITES
 for (mET,mP,mR,mswd,lsite,lysd) in zip(all_files[0::4],all_files[1::4],all_files[2::4],all_files[3::4],siteList[0:5],lysdata):                           #for each lysimeter location... chirst, hororata, lincoln, winchmore
     #import using old column titles, so all gets imported
     columnsET, columnsP, columnsR, columnsswd, = ['date','PML','GLDAS','MOD16','lysimeter','ens mean','ens spread','ens rmse','RMSElys_mean'],['date','GPM','GPM3H','ERA5','VCSN','GLDAS','CHIRPS','lysimeter','ens mean','ens spread','ens rmse','RMSElys_mean'],['date','GPM_PML','GPM_GLDAS','GPM_MOD16','GPM3H_PML','GPM3H_GLDAS','GPM3H_MOD16','ERA5_PML','ERA5_GLDAS','ERA5_MOD16','VCSN_PML','VCSN_GLDAS','VCSN_MOD16','GLDAS_PML','GLDAS_GLDAS','GLDAS_MOD16','CHIRPS_PML','CHIRPS_GLDAS','CHIRPS_MOD16','lysimeter','ens mean','ens spread','RMSElys_mean'],['date','GPM_PML','GPM_GLDAS','GPM_MOD16','GPM3H_PML','GPM3H_GLDAS','GPM3H_MOD16','ERA5_PML','ERA5_GLDAS','ERA5_MOD16','VCSN_PML','VCSN_GLDAS','VCSN_MOD16','GLDAS_PML','GLDAS_GLDAS','GLDAS_MOD16','CHIRPS_PML','CHIRPS_GLDAS','CHIRPS_MOD16','lysimeter','ens mean','ens spread','RMSElys_mean']
@@ -601,8 +635,17 @@ print('b4004, dfmET_all',dfmET_all)
 
 
 
-##PLOTTING filter stats for >0.4
 
+
+
+
+
+
+
+
+
+
+##PLOTTING filtered time series, with filtering condition: kge>0.4 present more then 3 times across each site
 
 #INCLUDE ONLY SERIES THAT ARE FILTERED FOR                              (making amount of columns from 'lysimeter' onwards the same for R,P,ET for indexing inloop)
 dfmR_all[0]=dfmR_all[0][['date']+Rtopcount_gt04+['lysimeter','ens mean','ens spread','RMSElys_mean']]; dfmR_all[1]=dfmR_all[1][['date']+Rtopcount_gt04+['lysimeter','ens mean','ens spread','RMSElys_mean']]; dfmR_all[2]=dfmR_all[2][['date']+Rtopcount_gt04+['lysimeter','ens mean','ens spread','RMSElys_mean']];dfmR_all[3]=dfmR_all[3][['date']+Rtopcount_gt04+['lysimeter','ens mean','ens spread','RMSElys_mean']]
@@ -617,11 +660,11 @@ dfmET_all[0]=dfmET_all[0][['date','PML','GLDAS','lysimeter','ens mean','ens spre
 #dfstatsR = dfstatsR.loc[(slice(None),['VCSN_PML','ERA5_GLDAS','VCSN_MOD16','CHIRPS_MOD16','GPM_GLDAS'])]#[dfstatsR.index.isin(['VCSN_PML','ERA5_GLDAS','VCSN_MOD16','GPM_GLDAS','CHIRPS_MOD16'], level=1)]
 
 
-#PLOT AGAIN NOW ONLY SOME LINES
+#PLOT FILTERED ENSEMBLE
 for dfs,strdf, cols,stats in zip([dfmET_all,dfmP_all,dfmR_all],['ET','P','R'],[columnsET, columnsP, columnsR],[dfstatsET,dfstatsP,dfstatsR]):
 
-    fig, axs = plt.subplots(2,2, sharex=False,figsize=(17, 9), sharey=False)                                            # define to-be-filled spaces for sub-plots
-    plt.subplots_adjust(wspace=0.4)
+    fig, axs = plt.subplots(2,2, sharex=False,figsize=(19, 13), sharey=False)                                            # define to-be-filled spaces for sub-plots
+    plt.subplots_adjust(wspace=0.2,hspace=0.4)
 
     #print(axs)
     axs=axs.flatten()
@@ -639,7 +682,7 @@ for dfs,strdf, cols,stats in zip([dfmET_all,dfmP_all,dfmR_all],['ET','P','R'],[c
         #print(axs[loca])
         lp = True
         for cm, cr in zip(clmlist,colrlist):
-            print('ffhiero',dfs[loca][[cm]],'next')
+            print('little check:',dfs[loca][[cm]])
             if lp == True:                                                                                              #adding legend with kge values
                 axs[loca].plot(dfs[loca][['date']], dfs[loca][['lysimeter']], label='lysimeter', color='black',zorder=1)
                 lp=False
@@ -652,6 +695,7 @@ for dfs,strdf, cols,stats in zip([dfmET_all,dfmP_all,dfmR_all],['ET','P','R'],[c
             # print(round(mean(stats.loc[siteList[loca],:]['kge']),2))
             a=round(mean(stats.loc[siteList[loca],:]['kge']),2); b=round(mean(stats.loc[siteList[loca],:]['mean_rmse(ly_ensmember)']),2); c=round(mean(stats.loc[siteList[loca],:]['tav_spread(maxt-mint) (mm/day)']),2);
 
+            #put a box with summerizing statistics in each plot
             boxstring = '\n'.join((
                 r'$\overline{\mathrm{KGE}}=%.2f$' % (a, ),
                 r'$\overline{RMSE} = %.2f$ (mm/month)' % (b, ),
@@ -663,7 +707,7 @@ for dfs,strdf, cols,stats in zip([dfmET_all,dfmP_all,dfmR_all],['ET','P','R'],[c
 
             #put legend in top right corner of each subplot:
             axs[loca].legend(loc=1)#bbox_to_anchor=(0.7, 1.0))
-
+    plt.savefig("C:/Users/Mathijs/Documents/Master Uni/internship/timeseries/SItimeseries{y}.png".format(y=strdf))
 
 
 
