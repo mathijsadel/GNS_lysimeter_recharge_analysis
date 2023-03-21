@@ -16,7 +16,7 @@ For this the code contains the following steps:
 	4c match same indexing across model and lysimeter data (always put first day of the month as aggregate)
 	4d calculate statistics for P R and ET: ensemble mean, ensemble spread (minimum - maximum value present at each time step), kge (and coefficients), rmse
 	4e apply double indexing with first index lysimeter location, second index is ensemble member
-out: double indexed dataframe with 
+out: double indexed dataframe with kge values and other stats
 
 5 loop through use double indexed dataframe to build time series plots 
 6 apply a similar loop to plot a bar graph with kge values. 
